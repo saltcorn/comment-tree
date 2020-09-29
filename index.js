@@ -1,6 +1,7 @@
 const {
   input,
   div,
+  a,
   text,
   script,
   domReady,
@@ -34,7 +35,13 @@ const configuration_workflow = () =>
           const parent_fields = fields.filter(
             (f) => f.type === "Key" && f.reftable_name === table.name
           );
-
+          const create_views = await View.find_table_views_where(
+            context.table_id,
+            ({ state_fields, viewrow }) =>
+              viewrow.name !== context.viewname &&
+              state_fields.every((sf) => !sf.required)
+          );
+          const create_view_opts = create_views.map((v) => v.name);
           fields.push({ name: "id" });
           return new Form({
             fields: [
@@ -73,6 +80,21 @@ const configuration_workflow = () =>
                 type: "Bool",
                 required: true,
               },
+              {
+                name: "view_to_create",
+                label: "Use view to create",
+                sublabel:
+                  "If user has write permission. Leave blank to have no link to create a new item",
+                type: "String",
+                attributes: {
+                  options: create_view_opts.join(),
+                },
+              },
+              {
+                name: "label_create",
+                label: "Label to create",
+                type: "String",
+              },
             ],
           });
         },
@@ -89,13 +111,31 @@ const get_state_fields = async (table_id, viewname, { show_view }) => {
   });
 };
 
-const renderWithChildren = ({ row, html }, parent_field, rows) => {
-  const children = rows.filter((node) => node.row[parent_field] === row.id);
+const mkStateQS = (state) =>
+  Object.entries(state)
+    .map(([k, v]) =>
+      k[0] === "_" ? "" : `&${encodeURIComponent(k)}=${encodeURIComponent(v)}`
+    )
+    .join("");
+
+const renderWithChildren = ({ row, html }, opts, rows) => {
+  const children = rows.filter(
+    (node) => node.row[opts.parent_field] === row.id
+  );
   return div(
     html,
+    opts.view_to_create &&
+      a(
+        {
+          href: `/view/${opts.view_to_create}?${opts.parent_field}=${
+            row.id
+          }${mkStateQS(opts.state)}`,
+        },
+        opts.label_create
+      ),
     div(
       { style: "margin-left: 20px" },
-      children.map((node) => renderWithChildren(node, parent_field, rows))
+      children.map((node) => renderWithChildren(node, opts, rows))
     )
   );
 };
@@ -103,7 +143,14 @@ const renderWithChildren = ({ row, html }, parent_field, rows) => {
 const run = async (
   table_id,
   viewname,
-  { show_view, parent_field, order_field, descending },
+  {
+    show_view,
+    parent_field,
+    order_field,
+    descending,
+    view_to_create,
+    label_create,
+  },
   state,
   extraArgs
 ) => {
@@ -132,7 +179,11 @@ const run = async (
   const rootRows = renderedWithRows.filter(({ row }) => !row[parent_field]);
   return div(
     rootRows.map((row) =>
-      renderWithChildren(row, parent_field, renderedWithRows)
+      renderWithChildren(
+        row,
+        { parent_field, view_to_create, label_create, state },
+        renderedWithRows
+      )
     )
   );
 };

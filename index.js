@@ -178,6 +178,13 @@ const run = async (
   }));
   const rootRows = renderedWithRows.filter(({ row }) => !row[parent_field]);
   return div(
+    view_to_create &&
+      a(
+        {
+          href: `/view/${view_to_create}?${mkStateQS(state)}`,
+        },
+        label_create
+      ),
     rootRows.map((row) =>
       renderWithChildren(
         row,

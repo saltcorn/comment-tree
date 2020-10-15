@@ -13,8 +13,13 @@ const Workflow = require("@saltcorn/data/models/workflow");
 const Table = require("@saltcorn/data/models/table");
 const Form = require("@saltcorn/data/models/form");
 const Field = require("@saltcorn/data/models/field");
+const { asyncMap } = require("@saltcorn/data/utils");
 const db = require("@saltcorn/data/db");
-const { stateFieldsToWhere } = require("@saltcorn/data/plugin-helper");
+const {
+  stateToQueryString,
+  stateFieldsToWhere,
+  link_view,
+} = require("@saltcorn/data/plugin-helper");
 
 const configuration_workflow = () =>
   new Workflow({
@@ -95,6 +100,24 @@ const configuration_workflow = () =>
                 label: "Label to create",
                 type: "String",
               },
+              {
+                name: "top_create_display",
+                label: "Display top-level create view as",
+                type: "String",
+                required: true,
+                attributes: {
+                  options: "Link,Embedded,Popup",
+                },
+              },
+              {
+                name: "tree_create_display",
+                label: "Display in-tree create view as",
+                type: "String",
+                required: true,
+                attributes: {
+                  options: "Link,Embedded,Popup",
+                },
+              },
             ],
           });
         },
@@ -111,35 +134,56 @@ const get_state_fields = async (table_id, viewname, { show_view }) => {
   });
 };
 
-const mkStateQS = (state) =>
-  Object.entries(state)
-    .map(([k, v]) =>
-      k[0] === "_" ? "" : `&${encodeURIComponent(k)}=${encodeURIComponent(v)}`
-    )
-    .join("");
-
-const renderWithChildren = ({ row, html }, opts, rows) => {
+const renderWithChildren = async ({ row, html }, opts, rows) => {
   const children = rows.filter(
     (node) => node.row[opts.parent_field] === row.id
   );
   return div(
     html,
     opts.view_to_create &&
-      a(
-        {
-          href: `/view/${opts.view_to_create}?${opts.parent_field}=${
-            row.id
-          }${mkStateQS(opts.state)}`,
-        },
-        opts.label_create
-      ),
+      (await create_display(
+        opts.create_view,
+        opts.create_display,
+        opts.label_create,
+        opts.role,
+        opts.table,
+        opts.state,
+        opts.extraArgs,
+        opts.parent_field,
+        row
+      )),
     div(
       { style: "margin-left: 20px" },
-      children.map((node) => renderWithChildren(node, opts, rows))
+      await asyncMap(children, (node) => renderWithChildren(node, opts, rows))
     )
   );
 };
-
+const create_display = async (
+  create_view,
+  how,
+  label_create,
+  role,
+  table,
+  state0,
+  extraOpts,
+  parent_field,
+  row
+) => {
+  const state = { ...state0 };
+  if (parent_field) state[parent_field] = row.id;
+  if (!create_view) return "";
+  if (create_view && role <= table.min_role_write) {
+    if (how === "Embedded") {
+      return await create_view.run(state, extraOpts);
+    } else {
+      return link_view(
+        `/view/${create_view.name}${stateToQueryString(state)}`,
+        label_create || `Add ${pluralize(table.name, 1)}`,
+        how === "Popup"
+      );
+    }
+  }
+};
 const run = async (
   table_id,
   viewname,
@@ -150,10 +194,17 @@ const run = async (
     descending,
     view_to_create,
     label_create,
+    top_create_display,
+    tree_create_display,
   },
   state,
   extraArgs
 ) => {
+  const table = await Table.findOne({ id: table_id });
+  const role =
+    extraArgs && extraArgs.req && extraArgs.req.user
+      ? extraArgs.req.user.role_id
+      : 10;
   const showview = await View.findOne({ name: show_view });
   if (!showview)
     return div(
@@ -164,18 +215,34 @@ const run = async (
   const renderedWithRows = await showview.runMany(state, extraArgs);
 
   const rootRows = renderedWithRows.filter(({ row }) => !row[parent_field]);
+  const create_view =
+    view_to_create && (await View.findOne({ name: view_to_create }));
   return div(
     view_to_create &&
-      a(
-        {
-          href: `/view/${view_to_create}?${mkStateQS(state)}`,
-        },
-        label_create
-      ),
-    rootRows.map((row) =>
+      (await create_display(
+        create_view,
+        top_create_display,
+        label_create,
+        role,
+        table,
+        state,
+        extraArgs
+      )),
+    await asyncMap(rootRows, (row) =>
       renderWithChildren(
         row,
-        { parent_field, view_to_create, label_create, state },
+        {
+          parent_field,
+          create_view,
+          view_to_create,
+          label_create,
+          state,
+          extraArgs,
+          label_create,
+          role,
+          table,
+          create_display: tree_create_display,
+        },
         renderedWithRows
       )
     )

@@ -56,7 +56,7 @@ const configuration_workflow = () =>
               },
               {
                 name: "parent_field",
-                label: "Item View",
+                label: "Parent field",
                 type: "String",
                 sublabel: "Table must have a field that is Key to itself",
                 required: true,
@@ -154,28 +154,15 @@ const run = async (
   state,
   extraArgs
 ) => {
-  const tbl = await Table.findOne({ id: table_id });
-  const fields = await tbl.getFields();
-  const qstate = await stateFieldsToWhere({ fields, state });
-
-  const rows = await tbl.getRows(qstate, {
-    orderBy: order_field,
-    ...(descending && { orderDesc: true }),
-  });
-
   const showview = await View.findOne({ name: show_view });
-  const rendered = await showview.viewtemplateObj.renderRows(
-    tbl,
-    showview.name,
-    showview.configuration,
-    extraArgs,
-    rows
-  );
+  if (!showview)
+    return div(
+      { class: "alert alert-danger" },
+      "CommentTree incorrectly configured. Cannot find view: ",
+      show_view
+    );
+  const renderedWithRows = await showview.runMany(state, extraArgs);
 
-  const renderedWithRows = rendered.map((html, ix) => ({
-    html,
-    row: rows[ix],
-  }));
   const rootRows = renderedWithRows.filter(({ row }) => !row[parent_field]);
   return div(
     view_to_create &&

@@ -1,9 +1,10 @@
 {
   "name": "@saltcorn/comment-tree",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Display rows with parent field in a tree",
   "main": "index.js",
   "dependencies": {
+    "pluralize": "^8.0.0",
     "@saltcorn/markup": "^0.2.0",
     "@saltcorn/data": "^0.2.0"
   },

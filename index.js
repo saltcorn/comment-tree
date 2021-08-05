@@ -20,6 +20,7 @@ const {
   stateFieldsToWhere,
   link_view,
 } = require("@saltcorn/data/plugin-helper");
+const pluralize = require("pluralize");
 
 const configuration_workflow = () =>
   new Workflow({

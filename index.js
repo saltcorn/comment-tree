@@ -207,7 +207,8 @@ const run = async (
   {
     show_view,
     parent_field,
-    order_field,
+    order_field_children,
+    order_field_parents,
     descending,
     view_to_create,
     label_create,

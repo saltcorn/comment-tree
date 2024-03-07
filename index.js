@@ -156,7 +156,7 @@ const renderWithChildren = async ({ row, html }, opts, rows) => {
     (node) => node.row[opts.parent_field] === row.id
   );
 
-  if(opts.descending_children)
+  if(!opts.descending_children)
     children.sort((a,b) => a.row[opts.order_field_children] - b.row[opts.order_field_children]);
   else
     children.sort((a,b) => b.row[opts.order_field_children] - a.row[opts.order_field_children]);
@@ -241,7 +241,7 @@ const run = async (
 
   let rootRows = renderedWithRows.filter(({ row }) => !row[parent_field]);
 
-  if(descending_parents)
+  if(!descending_parents)
     rootRows.sort((a,b) => a.row[order_field_parents] - b.row[order_field_parents]);
   else
     rootRows.sort((a,b) => b.row[order_field_parents] - a.row[order_field_parents]);

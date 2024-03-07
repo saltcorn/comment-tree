@@ -154,7 +154,7 @@ const get_state_fields = async (table_id, viewname, { show_view }) => {
 const renderWithChildren = async ({ row, html }, opts, rows) => {
   const children = rows.filter(
     (node) => node.row[opts.parent_field] === row.id
-  ).sort((a,b) => a.row[order_field_parents] - b.row[order_field_parents]);
+  ).sort((a,b) => a.row[opts.order_field_parents] - b.row[opts.order_field_parents]);
   return div(
     html,
     opts.view_to_create &&
@@ -251,6 +251,7 @@ const run = async (
         row,
         {
           parent_field,
+          order_field_parents,
           create_view,
           view_to_create,
           label_create,

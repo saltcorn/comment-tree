@@ -71,9 +71,9 @@ const configuration_workflow = () =>
                 },
               },
               {
-                name: "order_field",
-                label: "Order by",
-                sublabel: "When parent is the same",
+                name: "order_field_parents",
+                label: "Parents: Order by",
+                sublabel: "",
                 type: "String",
                 required: true,
                 attributes: {
@@ -81,8 +81,24 @@ const configuration_workflow = () =>
                 },
               },
               {
-                name: "descending",
-                label: "Descending",
+                name: "descending_parents",
+                label: "Descending parents",
+                type: "Bool",
+                required: true,
+              },
+              {
+                name: "order_field_children",
+                label: "Children: Order by",
+                sublabel: "",
+                type: "String",
+                required: true,
+                attributes: {
+                  options: fields.map((f) => f.name).join(),
+                },
+              },
+              {
+                name: "descending_children",
+                label: "Descending children",
                 type: "Bool",
                 required: true,
               },
@@ -138,7 +154,7 @@ const get_state_fields = async (table_id, viewname, { show_view }) => {
 const renderWithChildren = async ({ row, html }, opts, rows) => {
   const children = rows.filter(
     (node) => node.row[opts.parent_field] === row.id
-  );
+  ).sort((a,b) => a.row[order_field_parents] - b.row[order_field_parents]);
   return div(
     html,
     opts.view_to_create &&
@@ -215,7 +231,7 @@ const run = async (
     );
   const renderedWithRows = await showview.runMany(state, extraArgs);
 
-  const rootRows = renderedWithRows.filter(({ row }) => !row[parent_field]);
+  let rootRows = renderedWithRows.filter(({ row }) => !row[parent_field]).sort((a,b) => a.row[order_field_children] - b.row[order_field_children]);;
   const create_view =
     view_to_create && (await View.findOne({ name: view_to_create }));
   return div(

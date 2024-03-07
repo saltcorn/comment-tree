@@ -1,5 +1,5 @@
 {
-  "name": "@saltcorn/comment-tree",
+  "name": "@gianlucafiore/comment-tree",
   "version": "0.1.2",
   "description": "Display rows with parent field in a tree",
   "main": "index.js",
@@ -13,7 +13,7 @@
   "devDependencies": {
     "jest": "^25.1.0"
   },
-  "repository": "github:saltcorn/comment-tree",
+  "repository": "github:gianlucafiore/comment-tree",
   "jest": {
     "testEnvironment": "node"
   },

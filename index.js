@@ -154,7 +154,13 @@ const get_state_fields = async (table_id, viewname, { show_view }) => {
 const renderWithChildren = async ({ row, html }, opts, rows) => {
   const children = rows.filter(
     (node) => node.row[opts.parent_field] === row.id
-  ).sort((a,b) => a.row[opts.order_field_parents] - b.row[opts.order_field_parents]);
+  );
+
+  if(opts.descending_children)
+    children.sort((a,b) => a.row[opts.order_field_children] - b.row[opts.order_field_children]);
+  else
+    children.sort((a,b) => b.row[opts.order_field_children] - a.row[opts.order_field_children]);
+
   return div(
     html,
     opts.view_to_create &&
@@ -209,7 +215,8 @@ const run = async (
     parent_field,
     order_field_children,
     order_field_parents,
-    descending,
+    descending_parents,
+    descending_children,
     view_to_create,
     label_create,
     top_create_display,
@@ -232,7 +239,13 @@ const run = async (
     );
   const renderedWithRows = await showview.runMany(state, extraArgs);
 
-  let rootRows = renderedWithRows.filter(({ row }) => !row[parent_field]).sort((a,b) => a.row[order_field_children] - b.row[order_field_children]);;
+  let rootRows = renderedWithRows.filter(({ row }) => !row[parent_field]);
+
+  if(descending_parents)
+    rootRows.sort((a,b) => a.row[order_field_parents] - b.row[order_field_parents]);
+  else
+    rootRows.sort((a,b) => b.row[order_field_parents] - a.row[order_field_parents]);
+
   const create_view =
     view_to_create && (await View.findOne({ name: view_to_create }));
   return div(
@@ -252,6 +265,9 @@ const run = async (
         {
           parent_field,
           order_field_parents,
+          order_field_children,
+          descending_parents,
+          descending_children,
           create_view,
           view_to_create,
           label_create,

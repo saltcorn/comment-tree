@@ -71,9 +71,9 @@ const configuration_workflow = () =>
                 },
               },
               {
-                name: "order_field",
-                label: "Order by",
-                sublabel: "When parent is the same",
+                name: "order_field_parents",
+                label: "Parents: Order by",
+                sublabel: "",
                 type: "String",
                 required: true,
                 attributes: {
@@ -81,8 +81,24 @@ const configuration_workflow = () =>
                 },
               },
               {
-                name: "descending",
-                label: "Descending",
+                name: "descending_parents",
+                label: "Descending parents",
+                type: "Bool",
+                required: true,
+              },
+              {
+                name: "order_field_children",
+                label: "Children: Order by",
+                sublabel: "",
+                type: "String",
+                required: true,
+                attributes: {
+                  options: fields.map((f) => f.name).join(),
+                },
+              },
+              {
+                name: "descending_children",
+                label: "Descending children",
                 type: "Bool",
                 required: true,
               },
@@ -139,6 +155,12 @@ const renderWithChildren = async ({ row, html }, opts, rows) => {
   const children = rows.filter(
     (node) => node.row[opts.parent_field] === row.id
   );
+
+  if(!opts.descending_children)
+    children.sort((a,b) => a.row[opts.order_field_children] - b.row[opts.order_field_children]);
+  else
+    children.sort((a,b) => b.row[opts.order_field_children] - a.row[opts.order_field_children]);
+
   return div(
     html,
     opts.view_to_create &&
@@ -191,8 +213,10 @@ const run = async (
   {
     show_view,
     parent_field,
-    order_field,
-    descending,
+    order_field_children,
+    order_field_parents,
+    descending_parents,
+    descending_children,
     view_to_create,
     label_create,
     top_create_display,
@@ -215,7 +239,13 @@ const run = async (
     );
   const renderedWithRows = await showview.runMany(state, extraArgs);
 
-  const rootRows = renderedWithRows.filter(({ row }) => !row[parent_field]);
+  let rootRows = renderedWithRows.filter(({ row }) => !row[parent_field]);
+
+  if(!descending_parents)
+    rootRows.sort((a,b) => a.row[order_field_parents] - b.row[order_field_parents]);
+  else
+    rootRows.sort((a,b) => b.row[order_field_parents] - a.row[order_field_parents]);
+
   const create_view =
     view_to_create && (await View.findOne({ name: view_to_create }));
   return div(
@@ -234,6 +264,10 @@ const run = async (
         row,
         {
           parent_field,
+          order_field_parents,
+          order_field_children,
+          descending_parents,
+          descending_children,
           create_view,
           view_to_create,
           label_create,
